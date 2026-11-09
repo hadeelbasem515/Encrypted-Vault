@@ -26,3 +26,15 @@ jobs:
         ignore-unfixed: true
         format: 'table'
         severity: 'CRITICAL,HIGH'
+
+    - name: 4. Generate SBOM with Syft
+      uses: anchore/sbom-action@v0
+      with:
+        file: sbom.spdx.json
+
+    - name: 5. Scan SBOM with Grype (Vulnerability Scanner)
+      uses: anchore/scan-action@v3
+      with:
+        sbom: sbom.spdx.json
+        fail-build: true
+        severity: 'high'
