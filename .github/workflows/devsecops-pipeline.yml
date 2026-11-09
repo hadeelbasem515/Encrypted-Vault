@@ -1,38 +1,40 @@
-name: DevSecOps Vault Pipeline
+name: DevSecOps CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "master" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "master" ]
 
 jobs:
-  security-and-sbom:
+  devsecops-pipeline:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+    - name: 1. Checkout Code
+      uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
+    - name: 2. File & Vault Structure Check
+      run: |
+        echo "Checking repository structure..."
+        ls -la
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: 3. Security Vulnerability Scan (Trivy)
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        ignore-unfixed: true
+        format: 'table'
+        severity: 'CRITICAL,HIGH'
 
-      - name: Generate SBOM with Syft
-        uses: anchore/sbom-action@v0
-        with:
-          path: "."
-          format: "spdx-json"
-          output-file: "sbom-output.json"
+    - name: 4. Generate SBOM with Syft
+      uses: anchore/sbom-action@v0
+      with:
+        file: sbom.spdx.json
 
-      - name: Run Vulnerability Scan with Grype
-        uses: anchore/scan-action@v3
-        with:
-          sbom: "sbom-output.json"
-          fail-build: false
+    - name: 5. Scan SBOM with Grype (Vulnerability Scanner)
+      uses: anchore/scan-action@v3
+      with:
+        sbom: sbom.spdx.json
+        fail-build: true
+        severity: 'high'
